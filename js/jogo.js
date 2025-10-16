@@ -1,51 +1,13 @@
 /// <reference path="../node_modules/phaser/types/phaser.d.ts" />
 
 // =================================================================
-// 1. CONFIGURAÇÃO DO JOGO
+// 1. REGISTRO DE EVENTOS GLOBAL
 // =================================================================
+const EventBus = new Phaser.Events.EventEmitter();
 
-const config = {
-    type: Phaser.AUTO,
-    width: 800,
-    height: 600,
-    backgroundColor: '#000020', // Um azul escuro abissal
-    physics: {
-        default: 'arcade',
-        arcade: {
-            gravity: { x: 0, y: 0 },
-            debug: false // Mude para 'true' para ver os colisores
-        }
-    },
-    // NOVO! Dividimos o jogo em "Cenas" para organizar o código.
-    // 'GameScene' é a cena principal onde o jogo acontece.
-    // 'UIScene' é uma cena que roda *por cima* da GameScene para mostrar a UI.
-    scene: [TitleScene, GameScene, UIScene]
-};
 
 // =================================================================
-// 2. VARIÁVEIS GLOBAIS E CONSTANTES
-// =================================================================
-
-let robo;
-let teclas;
-let reator;
-let torres;
-let inimigos;
-let projeteis;
-
-let recursos = 100; // Recurso inicial
-const CUSTO_TORRE = 50;
-
-// Variáveis para o sistema de ondas
-let ondaAtual = 0;
-let inimigosPorOnda = 5;
-let inimigosRestantes;
-
-// Acesso à cena da UI para podermos atualizá-la
-let uiScene;
-
-// =================================================================
-// 3. CENA DO TÍTULO (Menu Principal) - Tarefa 4.2
+// 2. CENA DO TÍTULO (Menu Principal)
 // =================================================================
 class TitleScene extends Phaser.Scene {
     constructor() {
@@ -53,8 +15,8 @@ class TitleScene extends Phaser.Scene {
     }
 
     create() {
-        this.add.text(400, 200, 'ABYSSAL BEACON', {
-            fontSize: '50px',
+        this.add.text(400, 200, 'ABYSSAL BEACON', { 
+            fontSize: '50px', 
             fill: '#00ffff',
             fontFamily: 'Arial Black'
         }).setOrigin(0.5);
@@ -65,246 +27,236 @@ class TitleScene extends Phaser.Scene {
             backgroundColor: '#005f5f',
             padding: { x: 20, y: 10 }
         }).setOrigin(0.5).setInteractive();
-
-        // Efeito de hover no botão
+        
         startButton.on('pointerover', () => { startButton.setBackgroundColor('#008f8f'); });
         startButton.on('pointerout', () => { startButton.setBackgroundColor('#005f5f'); });
 
-        // Ao clicar, inicia o jogo
         startButton.on('pointerdown', () => {
-            // Reinicia as variáveis globais antes de começar
-            recursos = 100;
-            ondaAtual = 0;
             this.scene.start('GameScene');
-            this.scene.start('UIScene');
+            this.scene.launch('UIScene');
         });
     }
 }
 
 
 // =================================================================
-// 4. CENA PRINCIPAL DO JOGO (onde toda a ação acontece)
+// 3. CENA PRINCIPAL DO JOGO
 // =================================================================
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
+        this.robo;
+        this.teclas;
+        this.reator;
+        this.torres;
+        this.inimigos;
+        this.projeteis;
+        this.recursos = 100;
+        this.ondaAtual = 0;
+        this.inimigosPorOnda = 5;
+        this.inimigosRestantes = 0;
+        this.isGameOver = false;
     }
-
-    preload() {
-        // Futuramente, carregaríamos imagens aqui.
-    }
-
+    
     create() {
-        // --- PREPARAÇÃO DA CENA ---
-        uiScene = this.scene.get('UIScene'); // Obtém a referência da cena de UI
+        this.isGameOver = false;
 
-        // --- CRIAÇÃO DOS ELEMENTOS DO JOGO ---
-        reator = this.physics.add.sprite(400, 300, null)
-            .setImmovable(true)
-            .setVisible(false);
-        reator.body.setCircle(30);
-        this.add.graphics({ fillStyle: { color: 0x00ffff } }).fillCircle(reator.x, reator.y, 30);
-        // NOVO! O reator agora tem vida.
-        reator.setData('vida', 10);
-        uiScene.updateVidaReator(reator.getData('vida'));
+        // --- ELEMENTOS ---
+        this.reator = this.physics.add.sprite(400, 300, null).setImmovable(true).setVisible(false);
+        this.reator.body.setCircle(30);
+        this.add.graphics({ fillStyle: { color: 0x00ffff } }).fillCircle(this.reator.x, this.reator.y, 30);
+        this.reator.setData('vida', 10);
+        
+        this.robo = this.physics.add.sprite(100, 300, null).setCollideWorldBounds(true).setTint(0x00ff00);
+        this.teclas = this.input.keyboard.createCursorKeys();
 
-        robo = this.physics.add.sprite(100, 300, null);
-        robo.setCollideWorldBounds(true);
-        robo.setTint(0x00ff00);
-
-        teclas = this.input.keyboard.createCursorKeys();
-
-        // --- CRIAÇÃO DOS GRUPOS ---
-        // Grupos são formas eficientes de gerenciar múltiplos objetos do mesmo tipo.
-        torres = this.physics.add.group();
-        inimigos = this.physics.add.group();
-        projeteis = this.physics.add.group();
-
-        // --- CONFIGURAÇÃO DAS COLISÕES ---
-        this.physics.add.collider(inimigos, reator, this.danoNoReator, null, this);
-        this.physics.add.overlap(projeteis, inimigos, this.acertarInimigo, null, this);
-
-        // --- SISTEMA DE DEFESA --- - Tarefa 1.3
-        // 'pointerdown' é o evento de clique do mouse.
+        // --- GRUPOS ---
+        this.torres = this.physics.add.group();
+        this.inimigos = this.physics.add.group();
+        this.projeteis = this.physics.add.group();
+        
+        // --- COLISÕES ---
+        this.physics.add.collider(this.inimigos, this.reator, this.danoNoReator, null, this);
+        this.physics.add.overlap(this.projeteis, this.inimigos, this.acertarInimigo, null, this);
+        
+        // --- SISTEMA DE DEFESA ---
         this.input.on('pointerdown', (pointer) => {
-            if (recursos >= CUSTO_TORRE) {
+            if (!this.isGameOver && this.recursos >= 50) {
                 this.criarTorre(pointer.x, pointer.y);
-                recursos -= CUSTO_TORRE;
-                uiScene.updateRecursos(recursos);
+                this.recursos -= 50;
+                EventBus.emit('recursosMudou', this.recursos);
             }
         });
-
+        
         // --- INICIAR JOGO ---
+        EventBus.emit('recursosMudou', this.recursos);
+        EventBus.emit('vidaMudou', this.reator.getData('vida'));
         this.proximaOnda();
     }
-
+    
     update(time, delta) {
-        // O `time` nos dá o tempo total de jogo, `delta` é o tempo desde o último frame.
+        if (this.isGameOver) return;
 
-        // --- LÓGICA DO ROBÔ ---
-        robo.setVelocity(0);
+        this.robo.setVelocity(0);
         const velocidadeRobo = 200;
-        if (teclas.left.isDown) { robo.setVelocityX(-velocidadeRobo); }
-        else if (teclas.right.isDown) { robo.setVelocityX(velocidadeRobo); }
-        if (teclas.up.isDown) { robo.setVelocityY(-velocidadeRobo); }
-        else if (teclas.down.isDown) { robo.setVelocityY(velocidadeRobo); }
+        if (this.teclas.left.isDown) { this.robo.setVelocityX(-velocidadeRobo); }
+        else if (this.teclas.right.isDown) { this.robo.setVelocityX(velocidadeRobo); }
+        if (this.teclas.up.isDown) { this.robo.setVelocityY(-velocidadeRobo); }
+        else if (this.teclas.down.isDown) { this.robo.setVelocityY(velocidadeRobo); }
 
-        // --- LÓGICA DAS TORRES (ATIRAR) ---
-        // Itera sobre todas as torres ativas no grupo.
-        torres.getChildren().forEach(torre => {
-            // As torres atiram a cada 1 segundo (1000ms).
+        this.torres.getChildren().forEach(torre => {
             if (time > (torre.getData('ultimoTiro') || 0) + 1000) {
                 this.torreAtira(torre, time);
             }
         });
 
-        // Se todos os inimigos da onda foram derrotados, chama a próxima.
-        if (inimigosRestantes <= 0) {
-            this.proximaOnda();
-        }
+        // ======================= CORREÇÃO PRINCIPAL AQUI =======================
+        // A lógica de sincronização visual, mais segura e eficiente.
+        this.inimigos.getChildren().forEach(inimigo => {
+            let visual = inimigo.getData('visual');
+            if (visual) {
+                visual.setPosition(inimigo.x, inimigo.y);
+            }
+        });
+        // ======================================================================
     }
-
-    // --- FUNÇÕES AUXILIARES DA CENA ---
-
+    
     criarTorre(x, y) {
-        let torre = torres.create(x, y, null).setVisible(false);
+        let torre = this.torres.create(x, y, null).setVisible(false).setImmovable(true);
         torre.body.setCircle(15);
-        torre.setImmovable(true);
         this.add.graphics({ fillStyle: { color: 0x8080ff } }).fillCircle(x, y, 15);
-        // 'ultimoTiro' guarda o tempo do último disparo para controlar a cadência.
-        torre.setData('ultimoTiro', 0);
+        torre.setData('ultimoTiro', 0); 
     }
-
+    
     torreAtira(torre, time) {
-        // Encontra o inimigo mais próximo dentro do alcance de 200 pixels.
-        let inimigoProximo = this.physics.closest(torre, inimigos.getChildren());
-
+        let inimigoProximo = this.physics.closest(torre, this.inimigos.getChildren());
         if (inimigoProximo && Phaser.Math.Distance.Between(torre.x, torre.y, inimigoProximo.x, inimigoProximo.y) < 200) {
-            let projetil = projeteis.create(torre.x, torre.y, null).setVisible(false);
+            let projetil = this.projeteis.create(torre.x, torre.y, null);
             projetil.body.setCircle(5);
-            this.add.graphics({ fillStyle: { color: 0xffff00 } }).fillCircle(projetil.x, projetil.y, 5);
+            
+            // Atribuir o visual diretamente ao objeto e não recriar.
+            let visual = this.add.graphics({ fillStyle: { color: 0xffff00 } }).fillCircle(0, 0, 5);
+            projetil.setData('visual', visual);
 
-            this.physics.moveToObject(projetil, inimigoProximo, 300); // Projéteis são rápidos!
+            // Anexar e mover. Acompanhamento automático na engine de física.
+            visual.setPosition(projetil.x, projetil.y);
+
+            this.physics.moveToObject(projetil, inimigoProximo, 300);
             torre.setData('ultimoTiro', time);
         }
     }
-
-    // Callback: Chamada quando um projétil acerta um inimigo.
+    
     acertarInimigo(projetil, inimigo) {
-        // .destroy() remove o objeto do jogo completamente.
+        // CORREÇÃO: Destrói o visual junto com o físico
+        if (projetil.getData('visual')) projetil.getData('visual').destroy();
         projetil.destroy();
+
+        if (inimigo.getData('visual')) inimigo.getData('visual').destroy();
+        inimigo.destroy();
+        
+        this.recursos += 10;
+        EventBus.emit('recursosMudou', this.recursos);
+
+        if (this.inimigos.countActive(true) === 0) {
+            this.proximaOnda();
+        }
+    }
+    
+    danoNoReator(reator, inimigo) {
+        if (inimigo.getData('visual')) inimigo.getData('visual').destroy();
         inimigo.destroy();
 
-        // O robô coleta o "scrap" deixado pelo inimigo
-        recursos += 10;
-        uiScene.updateRecursos(recursos);
-
-        inimigosRestantes--;
-    }
-
-    // Callback: Chamada quando um inimigo atinge o reator.
-    danoNoReator(reator, inimigo) {
-        inimigo.destroy(); // O inimigo é destruído no impacto.
-
-        let vidaAtual = reator.getData('vida');
-        vidaAtual--;
+        let vidaAtual = reator.getData('vida') - 1;
         reator.setData('vida', vidaAtual);
-        uiScene.updateVidaReator(vidaAtual);
+        EventBus.emit('vidaMudou', vidaAtual);
 
-        // Animação de dano (piscar em vermelho)
         this.cameras.main.flash(250, 255, 0, 0);
 
-        if (vidaAtual <= 0) {
-            this.gameOver();
+        if (vidaAtual <= 0) { this.gameOver(true); }
+
+        if (this.inimigos.countActive(true) === 0) {
+            this.proximaOnda();
         }
     }
-
-    // Sistema de Ondas - Tarefa 2.2
+    
     proximaOnda() {
-        if (ondaAtual >= 5) { // CONDIÇÃO DE VITÓRIA
-            this.scene.stop('UIScene');
-            this.add.text(400, 300, 'VITÓRIA!', { fontSize: '64px', fill: '#00ff00' }).setOrigin(0.5);
-            this.physics.pause();
+        if (this.ondaAtual >= 5) {
+            this.gameOver(false);
             return;
         }
+        this.ondaAtual++;
+        this.inimigosPorOnda += 3;
+        
+        EventBus.emit('ondaMudou', this.ondaAtual);
 
-        ondaAtual++;
-        inimigosPorOnda += 3; // A dificuldade aumenta
-        inimigosRestantes = inimigosPorOnda;
-
-        uiScene.updateOnda(ondaAtual);
-
-        // Cria os inimigos da nova onda em posições aleatórias nas bordas.
-        for (let i = 0; i < inimigosPorOnda; i++) {
-            let x = Math.random() < 0.5 ? 0 : 800; // Nasce na esquerda ou direita
-            let y = Phaser.Math.Between(0, 600); // Em qualquer altura
-
-            let inimigo = inimigos.create(x, y, null).setVisible(false);
+        for (let i = 0; i < this.inimigosPorOnda; i++) {
+            let x = Math.random() < 0.5 ? -20 : 820;
+            let y = Phaser.Math.Between(0, 600);
+            let inimigo = this.inimigos.create(x, y, null).setVisible(false);
             inimigo.body.setCircle(15);
-            inimigo.setData('visual', this.add.graphics({ fillStyle: { color: 0xff0000 } }).fillCircle(x, y, 15));
-            this.physics.moveToObject(inimigo, reator, 40 + (ondaAtual * 5)); // Inimigos ficam mais rápidos
+            let visual = this.add.graphics({ fillStyle: { color: 0xff0000 } }).fillCircle(0, 0, 15);
+            visual.setPosition(x, y); // Garante a posição inicial correta
+            inimigo.setData('visual', visual);
+            this.physics.moveToObject(inimigo, this.reator, 40 + (this.ondaAtual * 5));
         }
     }
-
-    // Tela Final - Game Over - Tarefa 4.2
-    gameOver() {
+    
+    gameOver(perdeu) {
+        this.isGameOver = true;
         this.scene.stop('UIScene');
         this.physics.pause();
-        robo.clearTint().setTint(0xff0000);
-        this.add.text(400, 300, 'GAME OVER', { fontSize: '64px', fill: '#ff0000' }).setOrigin(0.5);
+        this.robo.clearTint().setTint(0xff0000);
 
-        // Adiciona um botão para reiniciar
-        let restartButton = this.add.text(400, 400, 'Tentar Novamente', {
-            fontSize: '32px',
-            fill: '#ffffff'
-        }).setOrigin(0.5).setInteractive();
-
+        const mensagem = perdeu ? 'GAME OVER' : 'VITÓRIA!';
+        const cor = perdeu ? '#ff0000' : '#00ff00';
+        this.add.text(400, 300, mensagem, { fontSize: '64px', fill: cor }).setOrigin(0.5);
+        
+        let restartButton = this.add.text(400, 400, 'Voltar ao Menu', { fontSize: '32px', fill: '#ffffff' }).setOrigin(0.5).setInteractive();
         restartButton.on('pointerdown', () => this.scene.start('TitleScene'));
     }
 }
 
 
 // =================================================================
-// 5. CENA DA INTERFACE DO USUÁRIO (UI) - Tarefa 2.4
+// 4. CENA DA INTERFACE DO USUÁRIO (UI)
 // =================================================================
 class UIScene extends Phaser.Scene {
     constructor() {
         super({ key: 'UIScene' });
-        this.recursosText;
-        this.vidaReatorText;
-        this.ondaText;
     }
 
     create() {
-        // Exibe as informações na tela
-        this.recursosText = this.add.text(10, 10, `Recursos: ${recursos}`, {
-            fontSize: '24px',
-            fill: '#ffff00'
+        this.recursosText = this.add.text(10, 10, 'Recursos: 100', { fontSize: '24px', fill: '#ffff00' });
+        this.vidaReatorText = this.add.text(10, 40, 'Vida do Reator: 10', { fontSize: '24px', fill: '#00ffff' });
+        this.ondaText = this.add.text(650, 10, 'Onda: 1', { fontSize: '24px', fill: '#ff8000' });
+        
+        EventBus.on('recursosMudou', (valor) => this.recursosText.setText(`Recursos: ${valor}`), this);
+        EventBus.on('vidaMudou', (valor) => this.vidaReatorText.setText(`Vida do Reator: ${valor}`), this);
+        EventBus.on('ondaMudou', (valor) => this.ondaText.setText(`Onda: ${valor}`), this);
+        
+        // Limpar eventos quando a cena é desligada para evitar vazamento de memória
+        this.events.on('shutdown', () => {
+            EventBus.off('recursosMudou');
+            EventBus.off('vidaMudou');
+            EventBus.off('ondaMudou');
         });
-
-        this.vidaReatorText = this.add.text(10, 40, 'Vida do Reator: 10', {
-            fontSize: '24px',
-            fill: '#00ffff'
-        });
-
-        this.ondaText = this.add.text(650, 10, 'Onda: 0', {
-            fontSize: '24px',
-            fill: '#ff8000'
-        });
-    }
-
-    // Funções que a GameScene pode chamar para atualizar o texto
-    updateRecursos(valor) {
-        this.recursosText.setText(`Recursos: ${valor}`);
-    }
-
-    updateVidaReator(valor) {
-        this.vidaReatorText.setText(`Vida do Reator: ${valor}`);
-    }
-
-    updateOnda(valor) {
-        this.ondaText.setText(`Onda: ${valor}`);
     }
 }
+
+
+// =================================================================
+// 5. CONFIGURAÇÃO FINAL E INICIALIZAÇÃO DO JOGO
+// =================================================================
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    backgroundColor: '#000020',
+    physics: {
+        default: 'arcade',
+        arcade: { gravity: { x: 0, y: 0 }, debug: false }
+    },
+    scene: [TitleScene, GameScene, UIScene]
+};
 
 const game = new Phaser.Game(config);
