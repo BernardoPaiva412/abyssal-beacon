@@ -13,15 +13,12 @@ class TitleScene extends Phaser.Scene {
     constructor() { super({ key: 'TitleScene' }); }
     create() {
         this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 200, 'ABYSSAL BEACON', { fontSize: '50px', fill: '#00ffff', fontFamily: 'Arial Black' }).setOrigin(0.5);
-
         let storyButton = this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 50, 'HISTÓRIA', { fontSize: '32px', fill: '#ffffff', backgroundColor: '#4a0080', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive();
         storyButton.on('pointerover', () => storyButton.setBackgroundColor('#6d00ba')).on('pointerout', () => storyButton.setBackgroundColor('#4a0080'));
         storyButton.on('pointerdown', () => this.scene.launch('StoryScene'));
-
         let tutorialButton = this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 50, 'COMO JOGAR', { fontSize: '32px', fill: '#ffffff', backgroundColor: '#006994', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive();
         tutorialButton.on('pointerover', () => tutorialButton.setBackgroundColor('#008cbf')).on('pointerout', () => tutorialButton.setBackgroundColor('#006994'));
         tutorialButton.on('pointerdown', () => this.scene.launch('TutorialScene'));
-
         let startButton = this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 150, 'INICIAR MISSÃO', { fontSize: '32px', fill: '#ffffff', backgroundColor: '#005f5f', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive();
         startButton.on('pointerover', () => startButton.setBackgroundColor('#008f8f')).on('pointerout', () => startButton.setBackgroundColor('#005f5f'));
         startButton.on('pointerdown', () => { this.scene.start('GameScene'); this.scene.launch('UIScene'); });
@@ -46,7 +43,7 @@ class TutorialScene extends Phaser.Scene {
         this.add.rectangle(this.cameras.main.centerX, this.cameras.main.centerY, 800, 600, 0x000000, 0.9);
         this.add.text(this.cameras.main.centerX, 80, 'COMO JOGAR', { fontSize: '40px', fill: '#00ffff', fontFamily: 'Arial Black' }).setOrigin(0.5);
         const tutorialText = `OBJETIVO:\nProteja o Farol azul no centro. Sobreviva a 15 ondas de criaturas para vencer.\n\nCONTROLES:\n- Mover Robô: Teclas W, A, S, D ou Setas.\n- Construir Torre: Clique Esquerdo do Mouse.\n- Pausar o Jogo: Tecla ESC.\n\nCOMO FUNCIONA:\n1. Torres atiram nas criaturas vermelhas.\n2. Criaturas destruídas deixam um SCRAP amarelo.\n3. Mova seu robô sobre o SCRAP para coletar Recursos (5 por coleta).\n4. Use os Recursos para construir mais torres (custo: 50).`;
-        this.add.text(this.cameras.main.centerX, 300, tutorialText, { fontSize: '17px', fill: '#ffffff', align: 'left', lineSpacing: 10 }).setOrigin(0.5);
+        this.add.text(this.cameras.main.centerX, 300, tutorialText, { fontSize: '20px', fill: '#ffffff', align: 'left', lineSpacing: 10 }).setOrigin(0.5);
         let backButton = this.add.text(this.cameras.main.centerX, 550, 'Entendi!', { fontSize: '32px', fill: '#ffffff', backgroundColor: '#008000', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive();
         backButton.on('pointerover', () => backButton.setBackgroundColor('#00a000')).on('pointerout', () => backButton.setBackgroundColor('#008000'));
         backButton.on('pointerdown', () => this.scene.stop());
@@ -108,55 +105,51 @@ class UIScene extends Phaser.Scene {
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
-        // ...declarações de variáveis...
+        this.robo; this.teclas; this.reator; this.torres; this.inimigos;
+        this.projeteis; this.scraps; this.recursos = 100; this.ondaAtual = 0;
+        this.inimigosPorOnda = 5; this.isGameOver = false;
     }
 
-    // ----------- NOVO: FUNÇÃO PRELOAD PARA CARREGAR AS IMAGENS -----------
     preload() {
-        console.log("Carregando assets...");
         this.load.image('robo', 'images/robo.png');
         this.load.image('reator', 'images/reator.png');
         this.load.image('criatura', 'images/criatura.png');
         this.load.image('torre', 'images/torre.png');
         this.load.image('scrap', 'images/scrap.png');
-        // Para o projétil, vamos reutilizar a imagem do scrap e pintá-la
     }
 
     create() {
         this.isGameOver = false; this.recursos = 100; this.ondaAtual = 0; this.inimigosPorOnda = 5;
 
-        // --- CRIAÇÃO DOS ELEMENTOS COM SPRITES ---
-        // O reator agora é um sprite. Usamos setOrigin(0.5) para garantir que seu centro físico
-        // seja o centro da imagem. Ajustamos o raio do círculo de colisão.
-        this.reator = this.physics.add.sprite(400, 300, 'reator').setOrigin(0.5).setImmovable(true);
-        this.reator.body.setCircle(40); // Raio de colisão ajustado para o tamanho do sprite
+        this.reator = this.physics.add.sprite(400, 300, 'reator').setOrigin(0.5).setImmovable(true).setScale(0.3);
+        this.reator.body.setCircle(this.reator.width / 2 * 0.8);
         this.reator.setData('vida', 10);
 
-        // O robô agora usa a imagem 'robo'.
-        this.robo = this.physics.add.sprite(100, 300, 'robo').setCollideWorldBounds(true);
-        // Não precisamos mais do setTint verde, pois a imagem já tem cor.
-        
+        this.robo = this.physics.add.sprite(100, 300, 'robo').setCollideWorldBounds(true).setScale(0.3);
+        this.robo.body.setCircle(this.robo.width / 2);
+
         this.teclas = this.input.keyboard.addKeys({ up: 'W', down: 'S', left: 'A', right: 'D', arrowUp: 'UP', arrowDown: 'DOWN', arrowLeft: 'LEFT', arrowRight: 'RIGHT' });
-        
-        // Grupos permanecem os mesmos
+
         this.torres = this.physics.add.group();
         this.inimigos = this.physics.add.group();
         this.projeteis = this.physics.add.group();
         this.scraps = this.physics.add.group();
-        
+
         this.physics.add.collider(this.inimigos, this.reator, this.danoNoReator, null, this);
         this.physics.add.overlap(this.projeteis, this.inimigos, this.acertarInimigo, null, this);
         this.physics.add.overlap(this.robo, this.scraps, this.coletarRecurso, null, this);
 
         this.input.on('pointerdown', (pointer) => {
             if (!this.isGameOver && this.recursos >= 50) {
-                // Lógica de não sobrepor permanece a mesma, mas agora com corpos de sprites
                 let podeConstruir = true;
-                if (Phaser.Geom.Intersects.CircleToCircle(new Phaser.Geom.Circle(pointer.x, pointer.y, 25), this.reator.body)) {
+                const raioNovaTorre = (70 * 0.3) / 2; // Raio baseado no tamanho do sprite da torre
+
+                if (Phaser.Math.Distance.Between(pointer.x, pointer.y, this.reator.x, this.reator.y) < this.reator.body.radius + raioNovaTorre) {
                     podeConstruir = false;
                 }
+
                 this.torres.getChildren().forEach(torre => {
-                    if (Phaser.Geom.Intersects.CircleToCircle(new Phaser.Geom.Circle(pointer.x, pointer.y, 25), torre.body)) {
+                    if (Phaser.Math.Distance.Between(pointer.x, pointer.y, torre.x, torre.y) < torre.body.radius + raioNovaTorre) {
                         podeConstruir = false;
                     }
                 });
@@ -168,7 +161,7 @@ class GameScene extends Phaser.Scene {
                 }
             }
         });
-        
+
         this.input.keyboard.on('keydown-ESC', () => { this.scene.pause(); this.scene.pause('UIScene'); this.scene.launch('PauseScene'); });
         EventBus.emit('recursosMudou', this.recursos); EventBus.emit('vidaMudou', this.reator.getData('vida'));
         this.proximaOnda();
@@ -176,7 +169,7 @@ class GameScene extends Phaser.Scene {
 
     update(time, delta) {
         if (this.isGameOver) return;
-        
+
         this.robo.setVelocity(0);
         const velocidadeRobo = 200;
         if (this.teclas.left.isDown || this.teclas.arrowLeft.isDown) { this.robo.setVelocityX(-velocidadeRobo); }
@@ -185,29 +178,28 @@ class GameScene extends Phaser.Scene {
         else if (this.teclas.down.isDown || this.teclas.arrowDown.isDown) { this.robo.setVelocityY(velocidadeRobo); }
 
         this.torres.getChildren().forEach(torre => { if (time > (torre.getData('ultimoTiro') || 0) + 1000) { this.torreAtira(torre, time); } });
-        
-        // O loop de sincronização visual foi REMOVIDO! O código está mais limpo.
-        
+
+        this.projeteis.getChildren().forEach(projetil => { let visual = projetil.getData('visual'); if (visual) { visual.setPosition(projetil.x, projetil.y); } });
+
         if (this.inimigos.countActive(true) === 0) {
             this.proximaOnda();
         }
     }
 
-    // ----------- FUNÇÕES DE CRIAÇÃO E DESTRUIÇÃO ATUALIZADAS -----------
-
     criarTorre(x, y) {
-        let torre = this.torres.create(x, y, 'torre').setImmovable(true);
-        torre.body.setCircle(25); // Raio de colisão ajustado
+        let torre = this.torres.create(x, y, 'torre').setImmovable(true).setScale(0.3);
+        torre.body.setCircle(torre.width / 2);
         torre.setData('ultimoTiro', 0);
     }
-    
+
     torreAtira(torre, time) {
         let inimigoProximo = this.physics.closest(torre, this.inimigos.getChildren());
         if (inimigoProximo && Phaser.Math.Distance.Between(torre.x, torre.y, inimigoProximo.x, inimigoProximo.y) < 200) {
-            // O projétil usa o sprite do scrap, mas menor e pintado de amarelo
-            let projetil = this.projeteis.create(torre.x, torre.y, 'scrap');
-            projetil.setScale(0.5).setTint(0xffff00); // Metade do tamanho e amarelo
-            projetil.body.setCircle(8); // Colisor pequeno
+            let projetil = this.projeteis.create(torre.x, torre.y, null).setVisible(false);
+            projetil.body.setCircle(4);
+            let visual = this.add.graphics({ fillStyle: { color: 0xffff00 } }).fillCircle(0, 0, 4);
+            visual.setPosition(projetil.x, projetil.y);
+            projetil.setData('visual', visual);
             this.physics.moveToObject(projetil, inimigoProximo, 300);
             torre.setData('ultimoTiro', time);
         }
@@ -215,61 +207,59 @@ class GameScene extends Phaser.Scene {
 
     acertarInimigo(projetil, inimigo) {
         if (!projetil.active || !inimigo.active) return;
-        
-        projetil.destroy(); // Simplesmente destruímos o sprite
+
+        if (projetil.getData('visual')) projetil.getData('visual').destroy();
+        projetil.destroy();
 
         let vidaAtual = inimigo.getData('vida') - 1;
         inimigo.setData('vida', vidaAtual);
-        
+
         inimigo.setTint(0xffffff);
-        this.time.delayedCall(100, () => {
-            if (inimigo.active) { inimigo.clearTint(); }
-        });
+        this.time.delayedCall(100, () => { if (inimigo.active) { inimigo.clearTint(); } });
 
         if (vidaAtual <= 0) {
             this.criarScrap(inimigo.x, inimigo.y);
-            inimigo.destroy(); // Destruímos o inimigo
+            inimigo.destroy();
         }
     }
-    
+
     criarScrap(x, y) {
-        let scrap = this.scraps.create(x, y, 'scrap');
-        scrap.body.setCircle(10);
+        let scrap = this.scraps.create(x, y, 'scrap').setScale(0.3);
+        scrap.body.setCircle(scrap.width / 2);
     }
 
     coletarRecurso(robo, scrap) {
-        scrap.destroy(); // Simples
+        scrap.destroy();
         this.recursos += 5;
         EventBus.emit('recursosMudou', this.recursos);
     }
-    
+
     danoNoReator(reator, inimigo) {
         if (!inimigo.active) return;
-        inimigo.destroy(); // Simples
+        inimigo.destroy();
         let vidaAtual = reator.getData('vida') - 1;
         reator.setData('vida', vidaAtual);
         EventBus.emit('vidaMudou', vidaAtual);
         this.cameras.main.flash(250, 255, 0, 0);
         if (vidaAtual <= 0) { this.gameOver(true); }
     }
-    
+
     proximaOnda() {
         if (this.isGameOver) return;
         if (this.ondaAtual >= 15) { this.gameOver(false); return; }
-        
+
         this.ondaAtual++;
         if (this.ondaAtual > 1 && this.ondaAtual % 2 === 0) { this.inimigosPorOnda += 5; }
         EventBus.emit('ondaMudou', this.ondaAtual);
-        
+
         const vidaDosInimigosDaOnda = 1 + Math.floor((this.ondaAtual - 1) / 3);
 
         for (let i = 0; i < this.inimigosPorOnda; i++) {
             let x = Phaser.Math.Between(0, 1) === 0 ? Phaser.Math.Between(-20, -10) : Phaser.Math.Between(810, 820);
             let y = Phaser.Math.Between(-20, 620);
-            let inimigo = this.inimigos.create(x, y, 'criatura'); // Cria com o sprite 'criatura'
-            
+            let inimigo = this.inimigos.create(x, y, 'criatura').setScale(0.3);
             inimigo.setData('vida', vidaDosInimigosDaOnda);
-            inimigo.body.setCircle(15); // Colisor circular para a criatura
+            inimigo.body.setCircle(inimigo.width / 2 * 0.9);
             this.physics.moveToObject(inimigo, this.reator, 40 + (this.ondaAtual * 5));
         }
     }
