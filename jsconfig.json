@@ -1,6 +1,3 @@
 {
-  "compilerOptions": {
-    "checkJs": true
-  },
   "include": ["**/*"]
 }
