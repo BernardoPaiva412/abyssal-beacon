@@ -4,7 +4,6 @@ const config = {
     width: 800,
     height: 600,
     backgroundColor: '#151515',
-    // Habilita a física Arcade.
     physics: {
         default: 'arcade',
         arcade: {
