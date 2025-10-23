@@ -42,7 +42,7 @@ class TutorialScene extends Phaser.Scene {
     create() {
         this.add.rectangle(this.cameras.main.centerX, this.cameras.main.centerY, 800, 600, 0x000000, 0.9);
         this.add.text(this.cameras.main.centerX, 80, 'COMO JOGAR', { fontSize: '40px', fill: '#00ffff', fontFamily: 'Arial Black' }).setOrigin(0.5);
-        const tutorialText = `OBJETIVO:\nProteja o Farol azul no centro. Sobreviva a 12 ondas de criaturas para vencer.\n\nCONTROLES:\n- Mover Robô: Teclas W, A, S, D ou Setas.\n- Construir Torre: Clique Esquerdo do Mouse.\n- Pausar o Jogo: Tecla ESC.\n\nCOMO FUNCIONA:\n1. Torres atiram nas criaturas vermelhas.\n2. Criaturas destruídas deixam um SCRAP amarelo.\n3. Mova seu robô sobre o SCRAP para coletar Recursos (10 por coleta).\n4. Use os Recursos para construir mais torres (custo: 50).`;
+        const tutorialText = `OBJETIVO:\nProteja o Farol azul no centro. Sobreviva a 11 ondas de criaturas para vencer.\n\nCONTROLES:\n- Mover Robô: Teclas W, A, S, D ou Setas.\n- Construir Torre: Clique Esquerdo do Mouse.\n- Pausar o Jogo: Tecla ESC.\n\nCOMO FUNCIONA:\n1. Torres atiram nas criaturas vermelhas.\n2. Criaturas destruídas deixam um SCRAP amarelo.\n3. Mova seu robô sobre o SCRAP para coletar Recursos (10 por coleta).\n4. Use os Recursos para construir mais torres (custo: 50).`;
         this.add.text(this.cameras.main.centerX, 300, tutorialText, { fontSize: '17px', fill: '#ffffff', align: 'left', lineSpacing: 10 }).setOrigin(0.5);
         let backButton = this.add.text(this.cameras.main.centerX, 550, 'Entendi!', { fontSize: '32px', fill: '#ffffff', backgroundColor: '#008000', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive();
         backButton.on('pointerover', () => backButton.setBackgroundColor('#00a000')).on('pointerout', () => backButton.setBackgroundColor('#008000'));
@@ -246,7 +246,7 @@ class GameScene extends Phaser.Scene {
 
     proximaOnda() {
         if (this.isGameOver) return;
-        if (this.ondaAtual >= 12) { this.gameOver(false); return; }
+        if (this.ondaAtual >= 11) { this.gameOver(false); return; }
         this.ondaAtual++;
         if (this.ondaAtual > 1 && this.ondaAtual % 2 === 0) { this.inimigosPorOnda += 5; }
         EventBus.emit('ondaMudou', this.ondaAtual);
