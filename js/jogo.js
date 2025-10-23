@@ -42,7 +42,7 @@ class TutorialScene extends Phaser.Scene {
     create() {
         this.add.rectangle(this.cameras.main.centerX, this.cameras.main.centerY, 800, 600, 0x000000, 0.9);
         this.add.text(this.cameras.main.centerX, 80, 'COMO JOGAR', { fontSize: '40px', fill: '#00ffff', fontFamily: 'Arial Black' }).setOrigin(0.5);
-        const tutorialText = `OBJETIVO:\nProteja o Farol azul no centro. Sobreviva a 15 ondas de criaturas para vencer.\n\nCONTROLES:\n- Mover Robô: Teclas W, A, S, D ou Setas.\n- Construir Torre: Clique Esquerdo do Mouse.\n- Pausar o Jogo: Tecla ESC.\n\nCOMO FUNCIONA:\n1. Torres atiram nas criaturas vermelhas.\n2. Criaturas destruídas deixam um SCRAP amarelo.\n3. Mova seu robô sobre o SCRAP para coletar Recursos (5 por coleta).\n4. Use os Recursos para construir mais torres (custo: 50).`;
+        const tutorialText = `OBJETIVO:\nProteja o Farol azul no centro. Sobreviva a 15 ondas de criaturas para vencer.\n\nCONTROLES:\n- Mover Robô: Teclas W, A, S, D ou Setas.\n- Construir Torre: Clique Esquerdo do Mouse.\n- Pausar o Jogo: Tecla ESC.\n\nCOMO FUNCIONA:\n1. Torres atiram nas criaturas vermelhas.\n2. Criaturas destruídas deixam um SCRAP amarelo.\n3. Mova seu robô sobre o SCRAP para coletar Recursos (10 por coleta).\n4. Use os Recursos para construir mais torres (custo: 50).`;
         this.add.text(this.cameras.main.centerX, 300, tutorialText, { fontSize: '17px', fill: '#ffffff', align: 'left', lineSpacing: 10 }).setOrigin(0.5);
         let backButton = this.add.text(this.cameras.main.centerX, 550, 'Entendi!', { fontSize: '32px', fill: '#ffffff', backgroundColor: '#008000', padding: { x: 20, y: 10 } }).setOrigin(0.5).setInteractive();
         backButton.on('pointerover', () => backButton.setBackgroundColor('#00a000')).on('pointerout', () => backButton.setBackgroundColor('#008000'));
@@ -122,11 +122,11 @@ class GameScene extends Phaser.Scene {
     create() {
         this.isGameOver = false; this.recursos = 100; this.ondaAtual = 0; this.inimigosPorOnda = 5;
 
-        this.reator = this.physics.add.sprite(400, 300, 'reator').setOrigin(0.5).setImmovable(true).setScale(0.3);
+        this.reator = this.physics.add.sprite(400, 300, 'reator').setOrigin(0.5).setImmovable(true).setScale(0.2);
         this.reator.body.setCircle(this.reator.width * 0.15);
         this.reator.setData('vida', 10);
 
-        this.robo = this.physics.add.sprite(100, 300, 'robo').setCollideWorldBounds(true).setScale(0.3);
+        this.robo = this.physics.add.sprite(100, 300, 'robo').setCollideWorldBounds(true).setScale(0.2);
         this.robo.body.setCircle(this.robo.width * 0.25); // CORREÇÃO APLICADA
 
         this.teclas = this.input.keyboard.addKeys({ up: 'W', down: 'S', left: 'A', right: 'D', arrowUp: 'UP', arrowDown: 'DOWN', arrowLeft: 'LEFT', arrowRight: 'RIGHT' });
@@ -187,7 +187,7 @@ class GameScene extends Phaser.Scene {
     }
 
     criarTorre(x, y) {
-        let torre = this.torres.create(x, y, 'torre').setImmovable(true).setScale(0.3);
+        let torre = this.torres.create(x, y, 'torre').setImmovable(true).setScale(0.2);
         torre.body.setCircle(torre.width * 0.15); // CORREÇÃO: Corpo físico ajustado
         torre.setData('ultimoTiro', 0);
     }
@@ -195,7 +195,7 @@ class GameScene extends Phaser.Scene {
     torreAtira(torre, time) {
         let inimigoProximo = this.physics.closest(torre, this.inimigos.getChildren());
         if (inimigoProximo && Phaser.Math.Distance.Between(torre.x, torre.y, inimigoProximo.x, inimigoProximo.y) < 200) {
-            let projetil = this.projeteis.create(torre.x, torre.y, 'projetil').setScale(0.3); // NOVO: Usa o sprite 'projetil'
+            let projetil = this.projeteis.create(torre.x, torre.y, 'projetil').setScale(0.2); // NOVO: Usa o sprite 'projetil'
             projetil.body.setCircle(projetil.width * 0.5);
             this.physics.moveToObject(projetil, inimigoProximo, 300);
             torre.setData('ultimoTiro', time);
@@ -216,7 +216,7 @@ class GameScene extends Phaser.Scene {
     }
 
     criarScrap(x, y) {
-        let scrap = this.scraps.create(x, y, 'scrap').setScale(0.3);
+        let scrap = this.scraps.create(x, y, 'scrap').setScale(0.2);
         scrap.body.setCircle(scrap.width * 0.25); // CORREÇÃO: Corpo físico ajustado
     }
 
@@ -246,7 +246,7 @@ class GameScene extends Phaser.Scene {
         for (let i = 0; i < this.inimigosPorOnda; i++) {
             let x = Phaser.Math.Between(0, 1) === 0 ? Phaser.Math.Between(-20, -10) : Phaser.Math.Between(810, 820);
             let y = Phaser.Math.Between(-20, 620);
-            let inimigo = this.inimigos.create(x, y, 'criatura').setScale(0.3);
+            let inimigo = this.inimigos.create(x, y, 'criatura').setScale(0.2);
             inimigo.setData('vida', vidaDosInimigosDaOnda);
             inimigo.body.setCircle(inimigo.width * 0.5 * 0.9); // CORREÇÃO: Corpo físico ajustado
             this.physics.moveToObject(inimigo, this.reator, 40 + (this.ondaAtual * 5));
