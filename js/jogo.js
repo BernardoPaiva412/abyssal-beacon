@@ -248,7 +248,7 @@ class GameScene extends Phaser.Scene {
         if (this.isGameOver) return;
         if (this.ondaAtual >= 11) { this.gameOver(false); return; }
         this.ondaAtual++;
-        if (this.ondaAtual > 1 && this.ondaAtual % 2 === 0) { this.inimigosPorOnda += 5; }
+        if (this.ondaAtual > 1 && this.ondaAtual % 2 === 0) { this.inimigosPorOnda += 4; }
         EventBus.emit('ondaMudou', this.ondaAtual);
         const vidaDosInimigosDaOnda = 1 + Math.floor((this.ondaAtual - 1) / 3);
         for (let i = 0; i < this.inimigosPorOnda; i++) {
